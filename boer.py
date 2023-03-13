@@ -1,4 +1,3 @@
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -7,9 +6,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import json
 import argparse
+from PIL import Image
 
 class Session:
-	#	def __init__(self):
+	def __init__(self):
+		self.save_area = False
 
 	def allDataProvided(self):
 		if self.data['account']['login'] is None or self.data['account']['login'].strip() == "":
@@ -66,31 +67,36 @@ class Session:
 		# Load the URL
 		self.driver.get(url)
 
-		# wait for the dashboard page to load
-		dashboard_title = "Dashboard | Harness"
-
 		wait = WebDriverWait(self.driver, 20)
 		try:
-			wait.until(EC.title_is(dashboard_title))
+			wait.until(EC.presence_of_element_located((By.ID, 'resact-root')))
 		except TimeoutException:
 			# handle the exception when the timeout occurs
 			print("Error: Timed out waiting for page to load.")
-			return None
+			# return None
 
-		# execute the screenshot command with the coordinates of the region to capture
-		screenshot = self.driver.execute("screenshot", {'clip': {'x': x, 'y': y, 'width': w, 'height': h}})
+		try:
+			self.driver.find_element(By.CSS_SELECTOR, ".bp3-icon-minus > svg").click()
+		except Exception:
+			print("Ignoring exception when trying to minimise the actions...")
 
-		# save the screenshot to a file
-		with open(fn, 'wb') as f:
-			f.write(screenshot)
+		# take a screenshot of the page
+		self.driver.save_screenshot(fn)
 
-		return self
+		# crop the image to the right dimensions
+		# and save the cropped image to a file
+		image = Image.open(fn)
+		box = (x, y, w, h)
+		cropped_image = image.crop(box)
+		cropped_image.save(fn)
+
+		return fn
 
 	def makeAllScreenShots(self):
 		# Iterate over the elements in the "fruits" array
 		for screenshot in self.data['screenshots']:
-			print(screenshot['url'], screenshot['top'], screenshot['left'], screenshot['width'], screenshot['height'], screenshot['outputfile'])
-			self.makeScreenshot(screenshot['url'], screenshot['top'], screenshot['left'], screenshot['width'], screenshot['height'], screenshot['outputfile'])
+			print(screenshot['url'], screenshot['left'], screenshot['top'], screenshot['width'], screenshot['height'], screenshot['outputfile'])
+			self.makeScreenshot(screenshot['url'], screenshot['left'], screenshot['top'], screenshot['width'], screenshot['height'], screenshot['outputfile'])
 		return self
 
 	def quit(self):
